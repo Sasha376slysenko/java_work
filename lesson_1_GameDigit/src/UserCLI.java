@@ -9,11 +9,11 @@ public class UserCLI extends DigitUser {
 
     private void printDeviation(int numberUser, int randomDigit, int maxRange) {
         int width = 100;
+        int randomPos = width / 2;
         char[] bar = new char[width];
         StringBuilder rowFinish = new StringBuilder("Відхилення: 0 [ ");
 
         int userPos = (int) ((double) numberUser / maxRange * (width - 1));
-        int randomPos = (int) ((double) randomDigit / maxRange * (width - 1));
 
         java.util.Arrays.fill(bar, '-');
         bar[userPos] = 'X';
