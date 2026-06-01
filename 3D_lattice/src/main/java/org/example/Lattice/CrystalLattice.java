@@ -1,13 +1,10 @@
 package org.example.Lattice;
 
 public class CrystalLattice implements LatticeMD {
-    private int nx, ny, nz;
-    private boolean flagSquareLattice = true;
-    private boolean isFlagTriangleLattice = false;
-
     private double[] accelerationsX;
     private double[] accelerationsY;
     private double[] accelerationsZ;
+    private double[] arrDeltaCoor;
     private double[] positionsX;
     private double[] positionsY;
     private double[] positionsZ;
@@ -22,37 +19,69 @@ public class CrystalLattice implements LatticeMD {
     private double Lx;
     private double Ly;
     private double Lz;
+    private int geometry;
+    private int nx, ny, nz;
     private double temperature;
     private double kineticEnergy;
     private double potentialEnergy;
     private double latticeConstant;
     private double temperatureSystem;
 
-    // Mass atoms, step integration, k-Boltzmann
-    private int stepCount = 0;
-    private final double dt = 5e-4;
-    private final double mass = 1.2;
-    private final double k = 1.38;
+    // Mass atoms, step integration, ...
+    private double rCut;
+    private final double dt = 2e-4;     // CI: ps
+    private final double mass = 63.546; // CI: a.o.m
+    private final double k = 8.6173e-5; // CI: eV / K
 
-    // LJ
-    private final double k_spring = 50.0;
-    private final double r_0 = 1.4;
-    private final double rCut = 1.6;
+    // Morse potential
+    private final double De = 2.3;      // H, CI: eV
+    private final double r_0 = 2.55;    // r_qe, CI: A
+    private final double a_morse = 1.8; // W, CI: A^(-1)
 
-    public CrystalLattice(int nx, int ny, int nz,
-            int geometry, double latticeConstant) {
+    // Const convertation: (eV / A) -> (A / ps^2)
+    private final double forceToAccel = 9648.533;
+
+    public CrystalLattice(
+        int nx,
+        int ny,
+        int nz,
+        double rCut,
+        int geometry,
+        double temperature,
+        double latticeConstant){
+        // Lattice parameters
         this.nx = nx;
         this.ny = ny;
         this.nz = nz;
-        this.N = nx * ny * nz;
+        this.geometry = geometry;
+        this.temperature = temperature;
         this.latticeConstant = latticeConstant;
+
+        // Box parameter and radius cut
         this.Lx = nx * latticeConstant;
         this.Ly = ny * latticeConstant;
         this.Lz = nz * latticeConstant;
+        this.rCut = rCut;
 
+        // RUN MODEL
+        initNumberAtoms();
+        initVelocities();
+        computeForce();
+        computeAcceleration();
+        thermostat();
+        stabilizeSystem();
+    }
+
+    private void initSizeArrays(int N) {
+        /*
+        * +-----------------------+
+        * |Init size arrays model.|
+        * +-----------------------+
+        */
         this.accelerationsX = new double[N];
         this.accelerationsY = new double[N];
         this.accelerationsZ = new double[N];
+        this.arrDeltaCoor = new double[3];
         this.velocitiesX = new double[N];
         this.velocitiesY = new double[N];
         this.velocitiesZ = new double[N];
@@ -62,16 +91,54 @@ public class CrystalLattice implements LatticeMD {
         this.forcesX = new double[N];
         this.forcesY = new double[N];
         this.forcesZ = new double[N];
+    }
 
+    private void stabilizeSystem() {
+        /*
+        * +--------------------+
+        * |System stabilization|
+        * +--------------------+
+        */
+        int steps = 10;
+
+        for (int i = 0; i < steps; i++) {
+            stepVelocityVerlet();;
+            double temp_i = getTempI();
+
+            if (temp_i > 1e-3) {
+                double scale = Math.sqrt(temperature / temp_i);
+                
+                if (scale > 1.2) scale = 1.2;
+                if (scale < 0.8) scale = 0.8;
+
+                for (int j = 0; j < N; j++) {
+                    velocitiesX[j] *= scale;
+                    velocitiesY[j] *= scale;
+                    velocitiesZ[j] *= scale;
+                }
+            }
+        }
+    }
+
+    @Override
+    public void initNumberAtoms() {
+        // init Size arrays
         if (geometry == 1) {
-            this.flagSquareLattice = true;
-            this.isFlagTriangleLattice = false;
+            this.N = nx * ny * nz;
+            initSizeArrays(N);
+            initSquareLattice();
         } else if (geometry == 2) {
-            this.flagSquareLattice = false;
-            this.isFlagTriangleLattice = true;
+            this.N = nx * ny * nz;
+            initSizeArrays(N);
+            initTriangleLattice();
+        } else if (geometry == 3) {
+            this.N = nx * ny * nz * 2;
+            initSizeArrays(N);
+            initBCCLattice();
         } else {
-            this.flagSquareLattice = true;
-            this.isFlagTriangleLattice = true;
+            this.N = nx * ny * nz;
+            initSizeArrays(N);
+            initSquareLattice();
         }
     }
 
@@ -127,6 +194,36 @@ public class CrystalLattice implements LatticeMD {
     }
 
     @Override
+    public void initBCCLattice() {
+        /*
+        * +----------------+
+        * |Init FCC Lattice|
+        * +----------------+
+        */
+        int A = 0;
+        double a = latticeConstant;
+        double halfA = latticeConstant / 2;
+
+        for (int i = 0; i < nx; i++) {
+            for (int j = 0; j < ny; j++) {
+                for (int k = 0; k < nz; k++) {
+                    // first atom
+                    positionsX[A] = i * a;
+                    positionsY[A] = j * a;
+                    positionsZ[A] = k * a;
+                    A++;
+
+                    // second atom
+                    positionsX[A] = i * a + halfA;
+                    positionsY[A] = j * a + halfA;
+                    positionsZ[A] = k * a + halfA;
+                    A++;
+                }
+            }
+        }
+    }
+
+    @Override
     public void initVelocities() {
         /*
          * +-----------------------------------+
@@ -138,9 +235,9 @@ public class CrystalLattice implements LatticeMD {
         double vzMean = 0.0;
 
         for (int i = 0; i < N; i++) {
-            final double vxRandom = (Math.random() - 0.5) * 0.1;
-            final double vyRandom = (Math.random() - 0.5) * 0.1;
-            final double vzRandom = (Math.random() - 0.5) * 0.1;
+            final double vxRandom = (Math.random() - 0.5) * 0.05;
+            final double vyRandom = (Math.random() - 0.5) * 0.05;
+            final double vzRandom = (Math.random() - 0.5) * 0.05;
             velocitiesX[i] = vxRandom;
             velocitiesY[i] = vyRandom;
             velocitiesZ[i] = vzRandom;
@@ -158,17 +255,60 @@ public class CrystalLattice implements LatticeMD {
             velocitiesY[i] -= vyMean;
             velocitiesZ[i] -= vzMean;
         }
+
+        for (int i = 0; i < N; i++) {
+            positionsX[i] += (Math.random() - 0.5) * 0.005;
+            positionsY[i] += (Math.random() - 0.5) * 0.005;
+            positionsZ[i] += (Math.random() - 0.5) * 0.005;
+
+            if (positionsX[i] > Lx) positionsX[i] -= Lx;
+            if (positionsX[i] < 0) positionsX[i] += Lx;
+            if (positionsY[i] > Ly) positionsY[i] -= Ly;
+            if (positionsY[i] < 0) positionsY[i] += Ly;
+            if (positionsZ[i] > Lz) positionsZ[i] -= Lz;
+            if (positionsZ[i] < 0) positionsZ[i] += Lz;
+        }
     }
 
-    @Override
-    public double computePotential(double r) {
+    private void checkDeltaCoor(double dx, double dy, double dz) {
         /*
-         * +---------------------+
-         * |Compute potential LJ.|
-         * +---------------------+
+        * +------------------------+
+        * |Check delta coordinate: |
+        * |1. Delta X.             |
+        * |2. Delta Y.             |
+        * |3. Delta Z.             |
+        * +------------------------+
+        */
+        if (dx > Lx / 2)
+            dx -= Lx;
+        else if (dx < -Lx / 2)
+            dx += Lx;
+
+        if (dy > Ly / 2)
+            dy -= Ly;
+        else if (dy < -Ly / 2)
+            dy += Ly;
+
+        if (dz > Lz / 2)
+            dz -= Lz;
+        else if (dz < -Lz / 2)
+            dz += Lz;
+        
+        arrDeltaCoor[0] = dx;
+        arrDeltaCoor[1] = dy;
+        arrDeltaCoor[2] = dz;
+    } 
+
+    @Override
+    public double computePotential(double r_2) {
+        /*
+         * +------------------------+
+         * |Compute potential Morse.|
+         * +------------------------+
          */
-        double dr = r - r_0;
-        return 0.5 * k_spring * dr * dr;
+        double r = Math.sqrt(r_2);
+        double expTerm = Math.exp(-a_morse * (r - r_0));
+        return De * ((1.0 - expTerm) * (1.0 - expTerm) - 1.0);
     }
 
     @Override
@@ -186,6 +326,7 @@ public class CrystalLattice implements LatticeMD {
             double v_z = velocitiesZ[i];
             kineticEnergy += 0.5 * mass * (v_x * v_x + v_y * v_y + v_z * v_z);
         }
+        kineticEnergy /= (2.0 * forceToAccel);
     }
 
     @Override
@@ -195,34 +336,27 @@ public class CrystalLattice implements LatticeMD {
          * |Compute Energy potential.|
          * +-------------------------+
          */
-        double eps = 1e-8;
+        double eps = 1e-12;
         this.potentialEnergy = 0.0;
 
         for (int A = 0; A < N; A++) {
             for (int B = A + 1; B < N; B++) {
+                // dx, dy, dz
                 double dx = positionsX[B] - positionsX[A];
                 double dy = positionsY[B] - positionsY[A];
                 double dz = positionsZ[B] - positionsZ[A];
 
-                if (dx > Lx / 2)
-                    dx -= Lx;
-                if (dy > Ly / 2)
-                    dy -= Ly;
-                if (dz > Lz / 2)
-                    dz -= Lz;
-                if (dx < -Lx / 2)
-                    dx += Lx;
-                if (dy < -Ly / 2)
-                    dy += Ly;
-                if (dz < -Lz / 2)
-                    dz += Lz;
+                checkDeltaCoor(dx, dy, dz);
+                dx = arrDeltaCoor[0];
+                dy = arrDeltaCoor[1];
+                dz = arrDeltaCoor[2];
 
+                // radius vector
                 double r_2 = dx * dx + dy * dy + dz * dz;
-                double r = Math.sqrt(r_2);
 
-                if (r < eps || r > rCut)
+                if (r_2 < eps || r_2 > rCut * rCut)
                     continue;
-                potentialEnergy += computePotential(r);
+                potentialEnergy += computePotential(r_2);
             }
         }
     }
@@ -231,21 +365,21 @@ public class CrystalLattice implements LatticeMD {
     public void thermostat() {
         /*
          * +--------------------------------------+
-         * |Thermostat: |
-         * |1. Compute temperature system. |
-         * |2. Check temperature system. |
+         * |Thermostat:                           |
+         * |1. Compute temperature system.        |
+         * |2. Check temperature system.          |
          * |3. T_system > T => rescale velocities.|
          * +--------------------------------------+
          */
         double temp_i = getTempI();
         temperatureSystem = temp_i;
 
-        if (Math.abs(temp_i - temperature) < 0.1)
-            return;
+        if (temp_i < 1e-4) return;
+        double scale = Math.sqrt(temperature / temp_i);
 
-        // Scale Temperature
-        double tau = 0.1;
-        double scale = Math.sqrt(1 + (dt / tau) * (temperature / temp_i - 1.0));
+        // Min, Max scale
+        if (scale > 1.05) scale = 1.05;
+        if (scale < 0.95) scale = 0.95;
 
         for (int i = 0; i < N; i++) {
             velocitiesX[i] *= scale;
@@ -255,6 +389,11 @@ public class CrystalLattice implements LatticeMD {
     }
 
     private double getTempI() {
+        /*
+        * +---------------------------+
+        * |Compute temperature system.|
+        * +---------------------------+
+        */
         double temp_i = 0.0;
         double summaKineticEnergy = 0.0;
 
@@ -264,6 +403,7 @@ public class CrystalLattice implements LatticeMD {
             double v_z = velocitiesZ[i];
             summaKineticEnergy += mass * (v_x * v_x + v_y * v_y + v_z * v_z);
         }
+        summaKineticEnergy /= 2.0 * forceToAccel;
         temp_i = summaKineticEnergy / (3.0 * N * k);
         return temp_i;
     }
@@ -284,15 +424,23 @@ public class CrystalLattice implements LatticeMD {
     }
 
     @Override
-    public double forceGarmonik(double r_2) {
+    public double forceMorse(double r_2) {
         /*
-         * +---------------------------+
-         * |Compute force Leonard Jonse|
-         * +---------------------------+
+         * +-------------------+
+         * |Compute force Morse|
+         * +-------------------+
          */
         double r = Math.sqrt(r_2);
-        double dr = r - r_0;
-        return -k_spring * dr / r;
+        if (r < 1.5) return 5000.0 / r;
+
+        double expTerm = Math.exp(-a_morse * (r - r_0));
+        double force = 2.0 * a_morse * De * (expTerm * expTerm - expTerm);
+        force /= r;
+
+        final double MAX_POINTS = 1000.0;
+        if (force > MAX_POINTS) force = MAX_POINTS;
+        if (force < -MAX_POINTS) force = -MAX_POINTS;
+        return force;
     }
 
     @Override
@@ -312,25 +460,17 @@ public class CrystalLattice implements LatticeMD {
                 double dy = positionsY[B] - positionsY[A];
                 double dz = positionsZ[B] - positionsZ[A];
 
-                if (dx > Lx / 2)
-                    dx -= Lx;
-                if (dy > Ly / 2)
-                    dy -= Ly;
-                if (dz > Lz / 2)
-                    dz -= Lz;
-                if (dx < -Lx / 2)
-                    dx += Lx;
-                if (dy < -Ly / 2)
-                    dy += Ly;
-                if (dz < -Lz / 2)
-                    dz += Lz;
+                checkDeltaCoor(dx, dy, dz);
+                dx = arrDeltaCoor[0];
+                dy = arrDeltaCoor[1];
+                dz = arrDeltaCoor[2];
 
                 // Radiuse vector
                 double r_2 = dx * dx + dy * dy + dz * dz;
 
                 if (r_2 < eps || r_2 > rCut * rCut)
                     continue;
-                double force = forceGarmonik(r_2);
+                double force = forceMorse(r_2);
                 double fx = force * dx;
                 double fy = force * dy;
                 double fz = force * dz;
@@ -355,9 +495,9 @@ public class CrystalLattice implements LatticeMD {
          * +---------------------+
          */
         for (int i = 0; i < N; i++) {
-            accelerationsX[i] = forcesX[i] / mass;
-            accelerationsY[i] = forcesY[i] / mass;
-            accelerationsZ[i] = forcesZ[i] / mass;
+            accelerationsX[i] = (forcesX[i] / mass) * forceToAccel;
+            accelerationsY[i] = (forcesY[i] / mass) * forceToAccel;
+            accelerationsZ[i] = (forcesZ[i] / mass) * forceToAccel;
         }
     }
 
@@ -366,10 +506,10 @@ public class CrystalLattice implements LatticeMD {
         /*
          * +----------------------------------+
          * |Velocity Verlet Integration Step: |
-         * |1. Update speed. |
-         * |2. Update position. |
+         * |1. Update speed.                  |
+         * |2. Update position.               |
          * |3. Update force and acceleration. |
-         * |4. Update speed. |
+         * |4. Update speed.                  |
          * +----------------------------------+
          */
 
@@ -386,19 +526,9 @@ public class CrystalLattice implements LatticeMD {
             positionsY[i] += dt * velocitiesY[i];
             positionsZ[i] += dt * velocitiesZ[i];
 
-            if (positionsX[i] >= Lx)
-                positionsX[i] -= Lx;
-            if (positionsY[i] >= Ly)
-                positionsY[i] -= Ly;
-            if (positionsZ[i] >= Lz)
-                positionsZ[i] -= Lz;
-
-            if (positionsX[i] < 0)
-                positionsX[i] += Lx;
-            if (positionsY[i] < 0)
-                positionsY[i] += Ly;
-            if (positionsZ[i] < 0)
-                positionsZ[i] += Lz;
+            positionsX[i] = (positionsX[i] % Lx + Lx) % Lx;
+            positionsY[i] = (positionsY[i] % Ly + Ly) % Ly;
+            positionsZ[i] = (positionsZ[i] % Lz + Lz) % Lz;
         }
 
         // Step 3: Update force and acceleration.
@@ -413,47 +543,142 @@ public class CrystalLattice implements LatticeMD {
         }
     }
 
+    @Override
     public void forwardModel() {
         /*
-         * +----------------------------+
+         * +--------------------------+
          * |Forward Model Lattice 3D: |
-         * |1. Init Lattice. |
-         * |2. Init Init v, F, a. |
-         * |3. Step velocity verlet. |
-         * |4. Thermostat. |
-         * |5. Counter. |
-         * +----------------------------+
+         * |3. Step velocity verlet.  |
+         * |4. Thermostat.            |
+         * +--------------------------+
          */
-
-        if (stepCount == 0) {
-            // 1. Init Lattice.
-            if (flagSquareLattice) {
-                initSquareLattice();
-            } else if (isFlagTriangleLattice) {
-                initTriangleLattice();
-            } else {
-                initSquareLattice();
-            }
-
-            // 2. Init v, F, a
-            initVelocities();
-            computeForce();
-            computeAcceleration();
-        }
-
-        // 3. Step velocity Verlet
+        // 1. Step velocity Verlet
         stepVelocityVerlet();
 
-        // 4.Thermostat
+        // 2.Thermostat
         thermostat();
+    }
 
-        // 5. Counter
-        stepCount++;
+    private void rescaleVelocityMCTemp() {
+        /*
+        * +---------------------------+
+        * |Metropolis algorithm (III):|
+        * |Compute temp => thermostat.|
+        * +---------------------------+
+        */
+        double temp_i = getTempI();
+
+        if (temp_i < 1e-4) {
+            initVelocities();
+            temp_i = getTempI();
+        }
+        double scale = Math.sqrt(temperatureSystem / temp_i);
+
+        for (int i = 0; i < N; i++) {
+            velocitiesX[i] *= scale;
+            velocitiesY[i] *= scale;
+            velocitiesZ[i] *= scale;
+        }
+    }
+
+    private double computeLocalPotential(int atomA) {
+        /*
+        * +---------------------------+
+        * |Metropolis algorithm (II): |
+        * |Compute local potential.   |
+        * +---------------------------+
+        */
+        double energy = 0.0;
+        double eps = 1e-12;
+
+        for (int atomB = 0; atomB < N; atomB++) {
+            if (atomA == atomB) continue;
+
+            double dx = positionsX[atomB] - positionsX[atomA];
+            double dy = positionsY[atomB] - positionsY[atomA];
+            double dz = positionsZ[atomB] - positionsZ[atomA];
+
+            checkDeltaCoor(dx, dy, dz);
+            dx = arrDeltaCoor[0];
+            dy = arrDeltaCoor[1];
+            dz = arrDeltaCoor[2];
+
+            double r_2 = dx * dx + dy * dy + dz * dz;
+            if (r_2 < eps || r_2 > rCut * rCut)
+                continue;
+            energy += computePotential(r_2);
+        }
+        return energy;
     }
 
     @Override
-    public void setTemperature(double temp) {
-        this.temperature = temp;
+    public void forwardMetropolisSystem() {
+        /*
+        * +---------------------------------------+
+        * |Metropolis algorithm (I):              |
+        * |1. Random atom.                        |
+        * |2. Compute energy old and old position.|
+        * |3. Atomic displacement and new energy. |
+        * |4. Criterion check.                    |
+        * |5. Return atomic displacment.          |
+        * |6. Compute energy kinetick.            |
+        * |7. Thermostat.                         |
+        * +---------------------------------------+
+        */
+        double deltaMax = 0.05;
+        computeEnergyKinetic();
+        double totalEPBefore = getEnergyPotential();
+
+        for (int step = 0; step < N; step++) {
+            // Step 1: Random atom
+            int randomAtom = (int)(Math.random() * N);
+
+            // Step 2: Compute energy old and old position
+            double eOld = computeLocalPotential(randomAtom);
+            double oldX = positionsX[randomAtom];
+            double oldY = positionsY[randomAtom];
+            double oldZ = positionsZ[randomAtom];
+
+            // Step 3: Atomic displacement and new energy
+            positionsX[randomAtom] += (Math.random() - 0.5) * deltaMax;
+            positionsY[randomAtom] += (Math.random() - 0.5) * deltaMax;
+            positionsZ[randomAtom] += (Math.random() - 0.5) * deltaMax;
+
+            positionsX[randomAtom] = (positionsX[randomAtom] % Lx + Lx) % Lx;
+            positionsY[randomAtom] = (positionsY[randomAtom] % Ly + Ly) % Ly;
+            positionsZ[randomAtom] = (positionsZ[randomAtom] % Lz + Lz) % Lz;
+            double eNew = computeLocalPotential(randomAtom);
+
+            // Step 4: Criterion check
+            double deltaE = eNew - eOld;
+            boolean accept = false;
+
+            if (deltaE < 0) {
+                accept = true;
+            }else {
+                double factor = Math.exp(-deltaE / (k * temperature));
+                if (Math.random() < factor) accept = true;
+            }
+
+            // Step 5: Return atomic displacment
+            if (!accept) {
+                positionsX[randomAtom] = oldX;
+                positionsY[randomAtom] = oldY;
+                positionsZ[randomAtom] = oldZ;
+            }
+        }
+        
+        // Step 6: Compute energy kinetick
+        double totalEPAfter = getEnergyPotential();
+        double deltaSystemEP = totalEPAfter - totalEPBefore;
+        double targKineticEnergy = (3.0 / 2.0) * N * k * temperature;
+
+        kineticEnergy = kineticEnergy - deltaSystemEP;
+        kineticEnergy = kineticEnergy + 0.05 * (targKineticEnergy - kineticEnergy);
+        temperatureSystem = (2.0 * kineticEnergy) / (3.0 * N * k);
+
+        // Step 7: Thermostat
+        rescaleVelocityMCTemp();
     }
 
     @Override

@@ -3,6 +3,8 @@ package org.example.Lattice;
 public interface LatticeMD {
     // Lattice geometry
     void initVelocities();
+    void initBCCLattice();
+    void initNumberAtoms();
     void initSquareLattice();
     void initTriangleLattice();
 
@@ -14,11 +16,12 @@ public interface LatticeMD {
     void computeAcceleration();
     void computeEnergyKinetic();
     void computeEnergyPotential();
-    double forceGarmonik(double r_2);
+    double forceMorse(double r_2);
     double computePotential(double r);
 
-    // Set
-    void setTemperature(double temp);
+    // Model run
+    void forwardModel();
+    void forwardMetropolisSystem();
 
     // Get
     double[] getCoordinateXLattice();

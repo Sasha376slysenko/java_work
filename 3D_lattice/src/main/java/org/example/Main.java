@@ -10,8 +10,6 @@ import org.example.Lattice.CrystalLattice;
 import org.example.Visualizer.EnergyChart;
 import org.example.Visualizer.LatticeView1;
 import org.example.Visualizer.TemperatureChart;
-import org.example.Visualizer.KineticEnergyChart;
-import org.example.Visualizer.PotentialEnergyChart;
 
 public class Main extends Application {
     private EnergyChart energyChartS;
@@ -22,10 +20,6 @@ public class Main extends Application {
     private CrystalLattice latticeTriangle;
     private TemperatureChart temperatureChartS;
     private TemperatureChart temperatureChartT;
-    private KineticEnergyChart kineticEnergyChartS;
-    private KineticEnergyChart kineticEnergyChartT;
-    private PotentialEnergyChart potentialEnergyChartS;
-    private PotentialEnergyChart potentialEnergyChartT;
 
     // Window Geometry
     private int widthWindow = 1800;
@@ -40,54 +34,54 @@ public class Main extends Application {
 
     @Override
     public void start(Stage stage) {
-        int nx = 4;
-        int ny = 4;
-        int nz = 4;
-        double latticeParameter = 1.4;
+        int nx = 3;
+        int ny = 3;
+        int nz = 3;
+        double rCut = 5.5;
+        double temp = 300.0;
+        double latticeParameter1 = 2.944;
+        double latticeParameter2 = 2.55;
 
-        latticeSquare = new CrystalLattice(nx, ny, nz, typeS, latticeParameter);
-        latticeTriangle = new CrystalLattice(nx, ny, nz, typeT, latticeParameter);
-
-        latticeSquare.setTemperature(0.01);
-        latticeTriangle.setTemperature(0.01);
+        latticeSquare = new CrystalLattice(
+            nx, ny, nz,
+            rCut, typeS,
+            temp, latticeParameter1
+        );
+        latticeTriangle = new CrystalLattice(
+            nx, ny, nz,
+            rCut, typeT,
+            temp, latticeParameter2
+        );
 
         viewLatticeS = new LatticeView1(
-            nx, ny, nz,
+            nx, ny, nz, latticeParameter1,
             latticeSquare.getCoordinateXLattice(),
             latticeSquare.getCoordinateYLattice(),
             latticeSquare.getCoordinateZLattice()
         );
         energyChartS = new EnergyChart();
         temperatureChartS = new TemperatureChart();
-        kineticEnergyChartS = new KineticEnergyChart();
-        potentialEnergyChartS = new PotentialEnergyChart();
 
         viewLatticeT = new LatticeView1(
-            nx, ny, nz,
+            nx, ny, nz, latticeParameter2,
             latticeTriangle.getCoordinateXLattice(),
             latticeTriangle.getCoordinateYLattice(),
             latticeTriangle.getCoordinateZLattice()
         );
         energyChartT = new EnergyChart();
         temperatureChartT = new TemperatureChart();
-        kineticEnergyChartT = new KineticEnergyChart();
-        potentialEnergyChartT = new PotentialEnergyChart();
 
         // UI GRID: TABEL(ROW: 4, COLIS: 2)
         BorderPane root = new BorderPane();
         GridPane grid = new GridPane();
 
         grid.add(viewLatticeS.getSubScene(), 0, 0);
-        grid.add(energyChartS.getChart(), 1, 0);
+        grid.add(energyChartS.getContainer(), 1, 0);
         grid.add(temperatureChartS.getChart(), 2,0);
-        grid.add(kineticEnergyChartS.getChart(), 3, 0);
-        grid.add(potentialEnergyChartS.getChart(), 4, 0);
 
         grid.add(viewLatticeT.getSubScene(), 0, 1);
-        grid.add(energyChartT.getChart(), 1, 1);
+        grid.add(energyChartT.getContainer(), 1, 1);
         grid.add(temperatureChartT.getChart(), 2, 1);
-        grid.add(kineticEnergyChartT.getChart(), 3, 1);
-        grid.add(potentialEnergyChartT.getChart(), 4, 1);
         root.setCenter(grid);
 
         // Scene
@@ -97,14 +91,14 @@ public class Main extends Application {
         stage.show();
 
         // Append style line
-        energyChartS.appendStyle();
-        energyChartT.appendStyle();
+        energyChartS.appendStyleEK();
+        energyChartS.appendStyleEP();
+        energyChartS.appendStyleET();
+        energyChartT.appendStyleEK();
+        energyChartT.appendStyleEP();
+        energyChartT.appendStyleET();
         temperatureChartS.appendStyle();
         temperatureChartT.appendStyle();
-        kineticEnergyChartS.appendStyle();
-        kineticEnergyChartT.appendStyle();
-        potentialEnergyChartS.appendStyle();
-        potentialEnergyChartT.appendStyle();
 
         // Start Model Animation
         startSimulationLoop();
@@ -116,8 +110,10 @@ public class Main extends Application {
             @Override
             public void handle(long now) {
                 // 1. Step lattice
-                latticeSquare.forwardModel();
-                latticeTriangle.forwardModel();
+                // latticeSquare.forwardModel();
+                // latticeTriangle.forwardModel()
+                latticeSquare.forwardMetropolisSystem();
+                latticeTriangle.forwardMetropolisSystem();
 
                 // 2. Update visualization
                 viewLatticeS.setPositionsX(latticeSquare.getCoordinateXLattice());
@@ -140,15 +136,15 @@ public class Main extends Application {
                 double temperatureT = latticeTriangle.getTemperatureSystem();
                 double totalT = kineticT + potentialT;
 
-                energyChartS.addPoint(step, totalS);
-                kineticEnergyChartS.addPoint(step, kineticS);
+                energyChartS.addPointET(step, totalS);
+                energyChartS.addPointEK(step, kineticS);
+                energyChartS.addPointEP(step, potentialS);
                 temperatureChartS.addPoint(step, temperatureS);
-                potentialEnergyChartS.addPoint(step, potentialS);
 
-                energyChartT.addPoint(step, totalT);
-                kineticEnergyChartT.addPoint(step, kineticT);
+                energyChartT.addPointET(step, totalT);
+                energyChartT.addPointEK(step, kineticT);
+                energyChartT.addPointEP(step, potentialT);
                 temperatureChartT.addPoint(step, temperatureT);
-                potentialEnergyChartT.addPoint(step, potentialT);
                 step++;
             }
         };

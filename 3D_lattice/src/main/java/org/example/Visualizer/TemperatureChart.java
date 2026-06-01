@@ -14,8 +14,8 @@ public class TemperatureChart {
         NumberAxis xAxis = new NumberAxis();
         NumberAxis yAxis = new NumberAxis();
 
-        xAxis.setLabel("Time");
-        yAxis.setLabel("Temperature");
+        xAxis.setLabel("Step");
+        yAxis.setLabel("Temperature, Kelvin");
         xAxis.setAnimated(false);
         yAxis.setAnimated(false);
         yAxis.setForceZeroInRange(false);
