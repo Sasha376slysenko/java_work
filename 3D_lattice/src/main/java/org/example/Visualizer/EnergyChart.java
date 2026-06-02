@@ -6,7 +6,7 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.layout.VBox;
 
 public class EnergyChart {
-    private final int MAX_POINTS = 10000;
+    private final int MAX_POINTS = 2000;
 
     private final VBox container;
     private final LineChart<Number, Number> kinChart;
@@ -27,7 +27,7 @@ public class EnergyChart {
         NumberAxis xKin = new NumberAxis();
         NumberAxis yKin = new NumberAxis();
 
-        xKin.setLabel("Step");
+        xKin.setLabel("MD: dt=0.2(fs) , MC: Step");
         yKin.setLabel("K Energy(eV)");
         xKin.setAnimated(false);
         yKin.setAnimated(false);
@@ -44,7 +44,7 @@ public class EnergyChart {
         NumberAxis xPot = new NumberAxis();
         NumberAxis yPot = new NumberAxis();
 
-        xPot.setLabel("Step");
+        xPot.setLabel("MD: dt=0.2(fs) , MC: Step");
         yPot.setLabel("P, T Energy(eV)");
         xPot.setAnimated(false);
         yPot.setAnimated(false);

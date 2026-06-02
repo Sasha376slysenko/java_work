@@ -26,7 +26,7 @@ public class Main extends Application {
     private int heightWindow = 860;
 
     // Type
-    private int typeS = 1;
+    private int typeS = 3;
     private int typeT = 2;
 
     // Step
@@ -110,41 +110,45 @@ public class Main extends Application {
             @Override
             public void handle(long now) {
                 // 1. Step lattice
-                // latticeSquare.forwardModel();
-                // latticeTriangle.forwardModel()
+                latticeSquare.forwardModel();
+                latticeTriangle.forwardModel();
                 latticeSquare.forwardMetropolisSystem();
                 latticeTriangle.forwardMetropolisSystem();
+                // latticeSquare.forwardDemonSystem();
+                // latticeTriangle.forwardDemonSystem();
 
-                // 2. Update visualization
-                viewLatticeS.setPositionsX(latticeSquare.getCoordinateXLattice());
-                viewLatticeS.setPositionsY(latticeSquare.getCoordinateYLattice());
-                viewLatticeS.setPositionsZ(latticeSquare.getCoordinateZLattice());
-                viewLatticeT.setPositionsX(latticeTriangle.getCoordinateXLattice());
-                viewLatticeT.setPositionsY(latticeTriangle.getCoordinateYLattice());
-                viewLatticeT.setPositionsZ(latticeTriangle.getCoordinateZLattice());
-                viewLatticeS.updatePositions();
-                viewLatticeT.updatePositions();
+                if (step % 30 == 0) {
+                    // 2. Update visualization
+                    viewLatticeS.setPositionsX(latticeSquare.getCoordinateXLattice());
+                    viewLatticeS.setPositionsY(latticeSquare.getCoordinateYLattice());
+                    viewLatticeS.setPositionsZ(latticeSquare.getCoordinateZLattice());
+                    viewLatticeT.setPositionsX(latticeTriangle.getCoordinateXLattice());
+                    viewLatticeT.setPositionsY(latticeTriangle.getCoordinateYLattice());
+                    viewLatticeT.setPositionsZ(latticeTriangle.getCoordinateZLattice());
+                    viewLatticeS.updatePositions();
+                    viewLatticeT.updatePositions();
 
-                // 3. Update charts: Square, Triangle
-                double kineticS = latticeSquare.getEnergyKinetic();
-                double potentialS = latticeSquare.getEnergyPotential();
-                double temperatureS = latticeSquare.getTemperatureSystem();
-                double totalS = kineticS + potentialS;
+                    // 3. Update charts: Square, Triangle
+                    double kineticS = latticeSquare.getEnergyKinetic();
+                    double potentialS = latticeSquare.getEnergyPotential();
+                    double temperatureS = latticeSquare.getTemperatureSystem();
+                    double totalS = kineticS + potentialS;
 
-                double kineticT = latticeTriangle.getEnergyKinetic();
-                double potentialT = latticeTriangle.getEnergyPotential();
-                double temperatureT = latticeTriangle.getTemperatureSystem();
-                double totalT = kineticT + potentialT;
+                    double kineticT = latticeTriangle.getEnergyKinetic();
+                    double potentialT = latticeTriangle.getEnergyPotential();
+                    double temperatureT = latticeTriangle.getTemperatureSystem();
+                    double totalT = kineticT + potentialT;
 
-                energyChartS.addPointET(step, totalS);
-                energyChartS.addPointEK(step, kineticS);
-                energyChartS.addPointEP(step, potentialS);
-                temperatureChartS.addPoint(step, temperatureS);
+                    energyChartS.addPointET(step, totalS);
+                    energyChartS.addPointEK(step, kineticS);
+                    energyChartS.addPointEP(step, potentialS);
+                    temperatureChartS.addPoint(step, temperatureS);
 
-                energyChartT.addPointET(step, totalT);
-                energyChartT.addPointEK(step, kineticT);
-                energyChartT.addPointEP(step, potentialT);
-                temperatureChartT.addPoint(step, temperatureT);
+                    energyChartT.addPointET(step, totalT);
+                    energyChartT.addPointEK(step, kineticT);
+                    energyChartT.addPointEP(step, potentialT);
+                    temperatureChartT.addPoint(step, temperatureT);
+                }
                 step++;
             }
         };

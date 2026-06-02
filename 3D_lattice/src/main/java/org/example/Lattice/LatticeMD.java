@@ -21,6 +21,7 @@ public interface LatticeMD {
 
     // Model run
     void forwardModel();
+    void forwardDemonSystem();
     void forwardMetropolisSystem();
 
     // Get

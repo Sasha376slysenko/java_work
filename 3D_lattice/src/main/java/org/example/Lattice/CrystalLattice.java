@@ -33,6 +33,12 @@ public class CrystalLattice implements LatticeMD {
     private final double mass = 63.546; // CI: a.o.m
     private final double k = 8.6173e-5; // CI: eV / K
 
+    // Variables demon's algorithm
+    private double EDemon = 1.5;
+    private boolean flagDemon = false;
+    private double summaEDemon = 0.0;
+    private int demonStepCounter = 0;
+
     // Morse potential
     private final double De = 2.3;      // H, CI: eV
     private final double r_0 = 2.55;    // r_qe, CI: A
@@ -552,6 +558,10 @@ public class CrystalLattice implements LatticeMD {
          * |4. Thermostat.            |
          * +--------------------------+
          */
+
+        // Demon or Molecular dynamics
+        flagDemon = false;
+
         // 1. Step velocity Verlet
         stepVelocityVerlet();
 
@@ -682,6 +692,74 @@ public class CrystalLattice implements LatticeMD {
     }
 
     @Override
+    public void forwardDemonSystem() {
+        /*
+        * +---------------------------------------+
+        * |Demon algorithm:                       |
+        * |1. Random atom.                        |
+        * |2. Compute energy old and old position.|
+        * |3. Atomic displacement and new energy. |
+        * |4. Criterion check.                    |
+        * |5. Return atomic displacment.          |
+        * |6. Compute average temperature.        |
+        * +---------------------------------------+
+        */
+        flagDemon = true;
+        double deltaMax = 0.05;
+
+        for (int step = 0; step < N; step++) {
+            // Step 1: Random atom.
+            int randomAtom = (int)(Math.random() * N);
+
+            // Step 2: Compute energy old and old position.
+            double eOld = computeLocalPotential(randomAtom);
+            double oldX = positionsX[randomAtom];
+            double oldY = positionsY[randomAtom];
+            double oldZ = positionsZ[randomAtom];
+
+            // Step 3: Atomic displacement and new energy.
+            positionsX[randomAtom] += (Math.random() - 0.5) * deltaMax;
+            positionsY[randomAtom] += (Math.random() - 0.5) * deltaMax;
+            positionsZ[randomAtom] += (Math.random() - 0.5) * deltaMax;
+
+            positionsX[randomAtom] = (positionsX[randomAtom] % Lx + Lx) % Lx;
+            positionsY[randomAtom] = (positionsY[randomAtom] % Ly + Ly) % Ly;
+            positionsZ[randomAtom] = (positionsZ[randomAtom] % Lz + Lz) % Lz;
+            double eNew = computeLocalPotential(randomAtom);
+
+            // Step 4: Criterion check.
+            double deltaE = eNew - eOld;
+            boolean accept = false;
+
+            if (deltaE < 0) {
+                accept = true;
+                EDemon -= deltaE;
+            } else {
+                if (EDemon >= deltaE) {
+                    accept = true;
+                    EDemon -= deltaE;
+                } else {
+                    accept = false;
+                }
+            }
+
+            // Step 5: Return atomic displacment.
+            if (!accept) {
+                positionsX[randomAtom] = oldX;
+                positionsY[randomAtom] = oldY;
+                positionsZ[randomAtom] = oldZ;
+            }
+        }
+
+        // Step 6: Compute average temperature.
+        demonStepCounter++;
+        summaEDemon += EDemon;
+        double meanEDemon = summaEDemon / demonStepCounter;
+        temperatureSystem = meanEDemon / k;
+        kineticEnergy = EDemon;
+    }
+
+    @Override
     public double[] getCoordinateXLattice() {
         return positionsX;
     }
@@ -703,7 +781,7 @@ public class CrystalLattice implements LatticeMD {
 
     @Override
     public double getEnergyKinetic() {
-        computeEnergyKinetic();
+        if (!flagDemon) computeEnergyKinetic();
         return kineticEnergy;
     }
 

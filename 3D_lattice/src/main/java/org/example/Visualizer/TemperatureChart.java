@@ -5,7 +5,7 @@ import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 
 public class TemperatureChart {
-    private final int MAX_POINTS = 10000;
+    private final int MAX_POINTS = 2000;
     private final LineChart<Number, Number> chart;
     private final String style = "-fx-stroke: #8900fa; -fx-stroke-width: 5px";
     private final XYChart.Series<Number, Number> tempSeries = new XYChart.Series<>();
@@ -14,7 +14,7 @@ public class TemperatureChart {
         NumberAxis xAxis = new NumberAxis();
         NumberAxis yAxis = new NumberAxis();
 
-        xAxis.setLabel("Step");
+        xAxis.setLabel("MD: dt=0.2(fs) , MC: Step");
         yAxis.setLabel("Temperature, Kelvin");
         xAxis.setAnimated(false);
         yAxis.setAnimated(false);
