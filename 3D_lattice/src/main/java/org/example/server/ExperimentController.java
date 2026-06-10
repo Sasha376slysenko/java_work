@@ -44,7 +44,7 @@ public class ExperimentController {
     }
 
     @GetMapping("/{id}")
-    public Experiment getExperimentById(@PathVariable Long id) {
+    public Experiment getExperimentById(@PathVariable("id") Long id) {
         /*
         * +----------+
         * |Search id.|

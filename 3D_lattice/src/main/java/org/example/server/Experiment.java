@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-public class Experiment extends ExpData {
+public class Experiment implements ExpData {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,7 +19,8 @@ public class Experiment extends ExpData {
     @OneToMany(
         mappedBy = "experiment",
         cascade = CascadeType.ALL,
-        orphanRemoval = true
+        orphanRemoval = true,
+        fetch = FetchType.EAGER
     )
     private List<DataPoint> dataPoints = new ArrayList<>();
 
@@ -34,6 +35,11 @@ public class Experiment extends ExpData {
     }
 
     public void addDataPoint(DataPoint dp) {
+        /*
+        * +----------------------+
+        * |Save points ArrayList.|
+        * +----------------------+
+        */
         dataPoints.add(dp);
         dp.setExperiment(this);
     }

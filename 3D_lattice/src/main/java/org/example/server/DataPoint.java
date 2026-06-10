@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
-public class DataPoint extends DPoint{
+public class DataPoint implements DPoint {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -59,6 +59,7 @@ public class DataPoint extends DPoint{
     }
 
     @Override
+    @JsonIgnore
     public Experiment getExperiment() {
         return experiment;
     }

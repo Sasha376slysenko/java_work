@@ -1,3 +1,5 @@
+package org.example.server;
+
 public interface DPoint {
     // Methods for providing data
     public Long getId();
