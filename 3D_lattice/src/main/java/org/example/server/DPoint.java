@@ -2,20 +2,19 @@ package org.example.server;
 
 public interface DPoint {
     // Methods for providing data
-    public Long getId();
-    public long getStep();
-    public double getKineticEnergy();
-    public double getPotentialEnergy();
-    public double getTotalEnergy();
-    public double getTemperature();
-    public Experiment getExperiment();
+    Long getId();
+    long getStep();
+    double getKineticEnergy();
+    double getPotentialEnergy();
+    double getTotalEnergy();
+    double getTemperature();
 
     //  Methods for obtaining data
-    public void setId(Long id);
-    public void setStep(long step);
-    public void setKineticEnergy(double kineticEnergy);
-    public void setPotentialEnergy(double potentialEnergy);
-    public void setTotalEnergy(double totalEnergy);
-    public void setTemperature(double temperature);
-    public void setExperiment(Experiment experiment);
+    void setId(Long id);
+    void setStep(long step);
+    void setKineticEnergy(double kineticEnergy);
+    void setPotentialEnergy(double potentialEnergy);
+    void setTotalEnergy(double totalEnergy);
+    void setTemperature(double temperature);
+    void setExperiment(Experiment experiment);
 }

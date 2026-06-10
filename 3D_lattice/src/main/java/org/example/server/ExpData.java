@@ -5,16 +5,16 @@ import java.util.List;
 
 public interface ExpData {
     // Methods for providing data
-    public Long getId();
-    public String getMaterialName();
-    public String getAlgorithmType();
-    public LocalDateTime getCreatedAt();
-    public List<DataPoint> getDataPoints();
+    Long getId();
+    String getMaterialName();
+    String getAlgorithmType();
+    LocalDateTime getCreatedAt();
+    List<DataPoint> getDataPoints();
 
     // Methods for obtaining data
-    public void setId(Long id);
-    public void setMaterialName(String materialName);
-    public void setAlgorithmType(String algorithmType);
-    public void setCreatedAt(LocalDateTime createdAt);
-    public void setDataPoints(List<DataPoint> dataPoints);
+    void setId(Long id);
+    void setMaterialName(String materialName);
+    void setAlgorithmType(String algorithmType);
+    void setCreatedAt(LocalDateTime createdAt);
+    void setDataPoints(List<DataPoint> dataPoints);
 }
