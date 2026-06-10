@@ -7,7 +7,6 @@ import javafx.scene.chart.XYChart;
 public class TemperatureChart {
     private final int MAX_POINTS = 2000;
     private final LineChart<Number, Number> chart;
-    private final String style = "-fx-stroke: #8900fa; -fx-stroke-width: 5px";
     private final XYChart.Series<Number, Number> tempSeries = new XYChart.Series<>();
 
     public TemperatureChart() {
@@ -33,11 +32,12 @@ public class TemperatureChart {
 
         tempSeries.getData().add(point);
         if (tempSeries.getData().size() > MAX_POINTS) {
-            tempSeries.getData().remove(0);
+            tempSeries.getData().removeFirst();
         }
     }
 
     public void appendStyle() {
+        final String style = "-fx-stroke: #8900fa; -fx-stroke-width: 5px";
         tempSeries.getNode().setStyle(style);
     }
 

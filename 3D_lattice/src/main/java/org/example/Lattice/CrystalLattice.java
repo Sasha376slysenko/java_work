@@ -1,10 +1,10 @@
 package org.example.Lattice;
 
-public class CrystalLattice implements LatticeMD {
+public class CrystalLattice implements LatticeMDS {
     private double[] accelerationsX;
     private double[] accelerationsY;
     private double[] accelerationsZ;
-    private double[] arrDeltaCoor;
+    private double[] arrDeltaCoordinate;
     private double[] positionsX;
     private double[] positionsY;
     private double[] positionsZ;
@@ -16,19 +16,19 @@ public class CrystalLattice implements LatticeMD {
     private double[] forcesZ;
 
     private int N;
-    private double Lx;
-    private double Ly;
-    private double Lz;
-    private int geometry;
-    private int nx, ny, nz;
-    private double temperature;
+    private final double Lx;
+    private final double Ly;
+    private final double Lz;
+    private final int geometry;
     private double kineticEnergy;
+    private final int nx, ny, nz;
     private double potentialEnergy;
-    private double latticeConstant;
+    private final double temperature;
     private double temperatureSystem;
+    private final double latticeConstant;
 
     // Mass atoms, step integration, ...
-    private double rCut;
+    private final double rCut;
     private final double dt = 2e-4;     // CI: ps
     private final double mass = 63.546; // CI: a.o.m
     private final double k = 8.6173e-5; // CI: eV / K
@@ -44,7 +44,7 @@ public class CrystalLattice implements LatticeMD {
     private final double r_0 = 2.55;    // r_qe, CI: A
     private final double a_morse = 1.8; // W, CI: A^(-1)
 
-    // Const convertation: (eV / A) -> (A / ps^2)
+    // Const conversation: (eV / A) -> (A / ps^2)
     private final double forceToAccel = 9648.533;
 
     public CrystalLattice(
@@ -87,7 +87,7 @@ public class CrystalLattice implements LatticeMD {
         this.accelerationsX = new double[N];
         this.accelerationsY = new double[N];
         this.accelerationsZ = new double[N];
-        this.arrDeltaCoor = new double[3];
+        this.arrDeltaCoordinate = new double[3];
         this.velocitiesX = new double[N];
         this.velocitiesY = new double[N];
         this.velocitiesZ = new double[N];
@@ -300,9 +300,9 @@ public class CrystalLattice implements LatticeMD {
         else if (dz < -Lz / 2)
             dz += Lz;
         
-        arrDeltaCoor[0] = dx;
-        arrDeltaCoor[1] = dy;
-        arrDeltaCoor[2] = dz;
+        arrDeltaCoordinate[0] = dx;
+        arrDeltaCoordinate[1] = dy;
+        arrDeltaCoordinate[2] = dz;
     } 
 
     @Override
@@ -353,9 +353,9 @@ public class CrystalLattice implements LatticeMD {
                 double dz = positionsZ[B] - positionsZ[A];
 
                 checkDeltaCoor(dx, dy, dz);
-                dx = arrDeltaCoor[0];
-                dy = arrDeltaCoor[1];
-                dz = arrDeltaCoor[2];
+                dx = arrDeltaCoordinate[0];
+                dy = arrDeltaCoordinate[1];
+                dz = arrDeltaCoordinate[2];
 
                 // radius vector
                 double r_2 = dx * dx + dy * dy + dz * dz;
@@ -467,9 +467,9 @@ public class CrystalLattice implements LatticeMD {
                 double dz = positionsZ[B] - positionsZ[A];
 
                 checkDeltaCoor(dx, dy, dz);
-                dx = arrDeltaCoor[0];
-                dy = arrDeltaCoor[1];
-                dz = arrDeltaCoor[2];
+                dx = arrDeltaCoordinate[0];
+                dy = arrDeltaCoordinate[1];
+                dz = arrDeltaCoordinate[2];
 
                 // Radiuse vector
                 double r_2 = dx * dx + dy * dy + dz * dz;
@@ -609,9 +609,9 @@ public class CrystalLattice implements LatticeMD {
             double dz = positionsZ[atomB] - positionsZ[atomA];
 
             checkDeltaCoor(dx, dy, dz);
-            dx = arrDeltaCoor[0];
-            dy = arrDeltaCoor[1];
-            dz = arrDeltaCoor[2];
+            dx = arrDeltaCoordinate[0];
+            dy = arrDeltaCoordinate[1];
+            dz = arrDeltaCoordinate[2];
 
             double r_2 = dx * dx + dy * dy + dz * dz;
             if (r_2 < eps || r_2 > rCut * rCut)
@@ -630,8 +630,8 @@ public class CrystalLattice implements LatticeMD {
         * |2. Compute energy old and old position.|
         * |3. Atomic displacement and new energy. |
         * |4. Criterion check.                    |
-        * |5. Return atomic displacment.          |
-        * |6. Compute energy kinetick.            |
+        * |5. Return atomic displacement.         |
+        * |6. Compute energy kinetics.            |
         * |7. Thermostat.                         |
         * +---------------------------------------+
         */
@@ -670,7 +670,7 @@ public class CrystalLattice implements LatticeMD {
                 if (Math.random() < factor) accept = true;
             }
 
-            // Step 5: Return atomic displacment
+            // Step 5: Return atomic displacement
             if (!accept) {
                 positionsX[randomAtom] = oldX;
                 positionsY[randomAtom] = oldY;
@@ -678,7 +678,7 @@ public class CrystalLattice implements LatticeMD {
             }
         }
         
-        // Step 6: Compute energy kinetick
+        // Step 6: Compute energy kinetic
         double totalEPAfter = getEnergyPotential();
         double deltaSystemEP = totalEPAfter - totalEPBefore;
         double targKineticEnergy = (3.0 / 2.0) * N * k * temperature;
@@ -700,7 +700,7 @@ public class CrystalLattice implements LatticeMD {
         * |2. Compute energy old and old position.|
         * |3. Atomic displacement and new energy. |
         * |4. Criterion check.                    |
-        * |5. Return atomic displacment.          |
+        * |5. Return atomic displacement.         |
         * |6. Compute average temperature.        |
         * +---------------------------------------+
         */
@@ -738,12 +738,10 @@ public class CrystalLattice implements LatticeMD {
                 if (EDemon >= deltaE) {
                     accept = true;
                     EDemon -= deltaE;
-                } else {
-                    accept = false;
                 }
             }
 
-            // Step 5: Return atomic displacment.
+            // Step 5: Return atomic displacement.
             if (!accept) {
                 positionsX[randomAtom] = oldX;
                 positionsY[randomAtom] = oldY;

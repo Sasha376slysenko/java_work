@@ -1,6 +1,6 @@
 package org.example.Lattice;
 
-public interface LatticeMD {
+public interface LatticeMDS {
     // Lattice geometry
     void initVelocities();
     void initBCCLattice();

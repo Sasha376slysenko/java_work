@@ -30,8 +30,6 @@ public class LatticeView1 {
     private double Lx;
     private double Ly;
     private double Lz;
-    private final int widthScene = 800;
-    private final int hightScene = 430;
     private double mouseOldX, mouseOldY;
 
     // Material Atomics
@@ -46,7 +44,7 @@ public class LatticeView1 {
             double[] positionsX,
             double[] positionsY,
             double[] positionsZ) {
-        // Lattice parametrs
+        // Lattice parameters
         this.Lx = nx * latticeConstant;
         this.Ly = ny * latticeConstant;
         this.Lz = nz * latticeConstant;
@@ -75,6 +73,9 @@ public class LatticeView1 {
          * |5. Scrolling.       |
          * +--------------------+
          */
+        final int widthScene = 800;
+        final int hightScene = 430;
+
         subScene = new SubScene(
                 root,
                 widthScene,
@@ -188,11 +189,11 @@ public class LatticeView1 {
         }
     }
 
-    private void connetcCylinder(Point3D p1, Point3D p2, Cylinder cyl) {
+    private void connectCylinder(Point3D p1, Point3D p2, Cylinder cyl) {
         /*
-        * +------------------------------------+
-        * |Cylider => (X, Y, Z), rotate, hight.|
-        * +------------------------------------+
+        * +-------------------------------------+
+        * |Cylinder => (X, Y, Z), rotate, hight.|
+        * +-------------------------------------+
         */
         Point3D diff = p2.subtract(p1);
         double height = diff.magnitude();
@@ -278,7 +279,7 @@ public class LatticeView1 {
                 // 3. Update rotate cylinders.
                 Point3D p1 = new Point3D(positionX[i], positionY[i], positionZ[i]);
                 Point3D p2 = new Point3D(positionX[j], positionY[j], positionZ[j]);
-                connetcCylinder(p1, p2, cyl);
+                connectCylinder(p1, p2, cyl);
                 usedCount++;
             }
         }
